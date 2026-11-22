@@ -140,10 +140,6 @@ KaliClean/
 └── README.md
 ```
 
-## 📝 Notes
-
-- The `GPUInfo not initialized on GpuInfoUpdate` line some systems print is harmless Chromium noise.
-- The badge links assume the repo lives at `github.com/wickednull/KaliClean` — change the URLs if you host it elsewhere.
 
 ## 📄 License
 
