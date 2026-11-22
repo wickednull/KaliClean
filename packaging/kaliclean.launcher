@@ -1,0 +1,3 @@
+#!/bin/sh
+# KaliClean launcher (installed as /usr/bin/kaliclean).
+exec /usr/bin/python3 /usr/share/kaliclean/kaliclean.py "$@"

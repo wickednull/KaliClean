@@ -48,6 +48,30 @@ python3 kaliclean.py
 
 **Requirements:** Kali Linux with Python 3, PySide6 and QtWebEngine (all included in a standard Kali install).
 
+## 📦 Installation
+
+Build a Debian package and install it (recommended — integrates with apt and uninstalls cleanly):
+
+```bash
+make deb
+sudo apt install ./dist/kaliclean_1.0.0_all.deb
+```
+
+Or install straight from the checkout without building a package:
+
+```bash
+sudo ./install.sh          # remove later with: sudo ./uninstall.sh
+```
+
+Both routes install the application to `/usr/share/kaliclean`, add a `kaliclean` command,
+a desktop menu entry with the app icon, hicolor icons at every common size and a
+man page (`man kaliclean`). Launch it from the applications menu or by typing
+`kaliclean`.
+
+Other useful targets: `make icons` regenerates the PNG icons from
+`assets/kaliclean.svg`, `make check` runs syntax checks, `make uninstall`
+removes a non-package install.
+
 ## 🧹 What it cleans
 
 | Target | Action | Sudo |
@@ -91,9 +115,27 @@ KaliClean/
 ├── web/
 │   ├── index.html        # the glass UI
 │   └── qwebchannel.js    # Qt's WebChannel client
+├── assets/
+│   ├── kaliclean.svg     # source icon (vector)
+│   ├── kaliclean.png     # 256px window icon
+│   ├── icons/            # rendered hicolor PNG icons
+│   └── render_icons.py   # icon rendering script
+├── packaging/
+│   ├── build_deb.sh      # .deb builder
+│   ├── control           # Debian package metadata
+│   ├── com.github.wickednull.KaliClean.desktop  # menu entry
+│   ├── kaliclean.launcher
+│   ├── com.github.wickednull.KaliClean.metainfo.xml  # software-center metadata
+│   ├── kaliclean.1       # man page
+│   ├── changelog         # Debian changelog
+│   ├── postinst          # cache refresh on install
+│   └── postrm            # cache refresh / cleanup on removal
 ├── docs/
 │   └── screenshot.png    # UI preview
-├── run.sh                # launcher
+├── install.sh            # lightweight system installer
+├── uninstall.sh          # matching uninstaller
+├── Makefile              # make deb / icons / install / uninstall / check
+├── run.sh                # development launcher
 ├── LICENSE               # MIT
 └── README.md
 ```

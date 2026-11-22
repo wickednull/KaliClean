@@ -23,7 +23,7 @@ from PySide6.QtCore import (  # noqa: E402
     Signal,
     Slot,
 )
-from PySide6.QtGui import QColor, QGuiApplication  # noqa: E402
+from PySide6.QtGui import QColor, QGuiApplication, QIcon  # noqa: E402
 from PySide6.QtWebChannel import QWebChannel  # noqa: E402
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings  # noqa: E402
 from PySide6.QtWebEngineWidgets import QWebEngineView  # noqa: E402
@@ -33,6 +33,7 @@ from backend import Cleaner, TASKS, human, system_stats  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent
 INDEX = ROOT / "web" / "index.html"
+ICON = ROOT / "assets" / "kaliclean.png"
 
 
 class GlassPage(QWebEnginePage):
@@ -227,8 +228,15 @@ def main():
     QApplication.setAttribute(Qt.AA_ShareOpenGLContexts, True)
     app = QApplication(sys.argv)
     app.setApplicationName("KaliClean")
+    if hasattr(app, "setDesktopFileName"):
+        app.setDesktopFileName("com.github.wickednull.KaliClean.desktop")
+    if ICON.is_file():
+        icon = QIcon(str(ICON))
+        app.setWindowIcon(icon)
 
     window = MainWindow()
+    if ICON.is_file():
+        window.setWindowIcon(QIcon(str(ICON)))
     screen = QGuiApplication.primaryScreen()
     if screen:
         geometry = screen.availableGeometry()

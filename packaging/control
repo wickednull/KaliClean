@@ -1,0 +1,17 @@
+Package: kaliclean
+Version: 1.0.0
+Section: utils
+Priority: optional
+Architecture: all
+Maintainer: wickednull <wickednull@users.noreply.github.com>
+Depends: python3 (>= 3.11), python3-pyside6.qtcore, python3-pyside6.qtgui, python3-pyside6.qtwidgets, python3-pyside6.qtwebchannel, python3-pyside6.qtwebenginecore, python3-pyside6.qtwebenginewidgets, sudo
+Recommends: desktop-file-utils, hicolor-icon-theme
+Description: Frosted-glass system hygiene utility for Kali Linux
+ KaliClean is a desktop utility for reclaiming disk space and memory on
+ Kali Linux. It offers ten carefully scoped cleanup targets, live RAM,
+ swap and disk gauges, and an iOS-style glass interface.
+ .
+ Privileged operations are authenticated in-app with sudo; the password
+ is kept only in process memory and is never written to disk. No telemetry
+ or network calls are made.
+Homepage: https://github.com/wickednull/KaliClean

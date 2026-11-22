@@ -1,0 +1,45 @@
+.TH KALICLEAN 1 "November 2026" "kaliclean 1.0.0" "User Commands"
+.SH NAME
+kaliclean \- frosted-glass system hygiene utility for Kali Linux
+.SH SYNOPSIS
+.B kaliclean
+.RI [ Qt-options ]
+.SH DESCRIPTION
+.B KaliClean
+is a desktop utility that reclaims memory and disk space on Kali Linux.
+It presents ten cleanup targets (kernel caches, swap, journals, apt
+archives, temporary files, thumbnails, browser caches, trash, crash
+reports and the DNS resolver cache), live RAM/swap/disk gauges, a progress
+ring and an activity log.
+.PP
+When elevated tasks are selected, the application asks for the login
+password in its own dialog. The password is held only in process memory,
+is never written to disk, and is discarded when the application exits.
+.SH USAGE
+Select the desired cleanup targets and press
+.B Clean & refresh\fR.
+Targets that are off by default (Trash, DNS resolver cache) are irreversible
+or briefly interrupt the network, so enable them deliberately.
+.SH OPTIONS
+Any arguments are passed through to the Python interpreter hosting the Qt
+application; standard Qt options such as
+.B \-\-style
+or
+.B \-\-platform
+may be used.
+.SH FILES
+.TP
+.I /usr/share/kaliclean/
+Application code and resources.
+.TP
+.I /usr/bin/kaliclean
+Command-line launcher.
+.TP
+.I /usr/share/applications/kaliclean.desktop
+Desktop menu entry.
+.SH SEE ALSO
+.BR apt-get (8),
+.BR journalctl (1),
+.BR swapoff (8)
+.SH AUTHOR
+wickednull <wickednull@users.noreply.github.com>

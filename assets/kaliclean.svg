@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2A0E52"/>
+      <stop offset="0.55" stop-color="#5A21A8"/>
+      <stop offset="1" stop-color="#9B4FE8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.28" cy="0.20" r="0.85">
+      <stop offset="0" stop-color="#E4B6FF" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#A855F7" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#A855F7" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.13"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.6" stop-color="#F6E9FF"/>
+      <stop offset="1" stop-color="#DDB8FF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App tile -->
+  <rect x="8" y="8" width="496" height="496" rx="112" ry="112" fill="url(#bg)"/>
+  <rect x="8" y="8" width="496" height="496" rx="112" ry="112" fill="url(#glow)"/>
+  <rect x="10" y="10" width="492" height="492" rx="110" ry="110" fill="none"
+        stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="4"/>
+
+  <!-- Frosted glass pane -->
+  <rect x="108" y="108" width="296" height="296" rx="76" ry="76" fill="url(#glass)"
+        stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="3"/>
+  <path d="M132 196 Q132 132 196 132 L318 132 Q260 178 248 268 Q214 214 132 196 Z"
+        fill="#FFFFFF" fill-opacity="0.10"/>
+
+  <!-- Primary sparkle -->
+  <path d="M256 154
+           C268 216 296 244 358 256
+           C296 268 268 296 256 358
+           C244 296 216 268 154 256
+           C216 244 244 216 256 154 Z"
+        fill="url(#spark)"/>
+
+  <!-- Companion sparkles -->
+  <path d="M356 326 C361 346 368 353 388 358 C368 363 361 370 356 390
+           C351 370 344 363 324 358 C344 353 351 346 356 326 Z"
+        fill="#FFFFFF" fill-opacity="0.92"/>
+  <path d="M168 338 C171 351 176 356 189 359 C176 362 171 367 168 380
+           C165 367 160 362 147 359 C160 356 165 351 168 338 Z"
+        fill="#FFFFFF" fill-opacity="0.72"/>
+</svg>

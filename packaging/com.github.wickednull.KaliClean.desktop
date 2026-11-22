@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=KaliClean
+GenericName=System Cleaner
+Comment=Frosted-glass system hygiene utility for Kali Linux
+Exec=kaliclean
+Icon=kaliclean
+Terminal=false
+Categories=Utility;
+Keywords=clean;cleaner;cache;memory;journal;temp;trash;hygiene;
+StartupNotify=true
+StartupWMClass=KaliClean

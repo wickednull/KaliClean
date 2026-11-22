@@ -1,0 +1,7 @@
+kaliclean (1.0.0) kali-rolling; urgency=medium
+
+  * Initial packaged release.
+  * Add desktop entry, scalable icon and hicolor PNG icons.
+  * Ship install/uninstall scripts, man page and Debian package.
+
+ -- wickednull <wickednull@users.noreply.github.com>  Sun, 22 Nov 2026 10:30:00 +0000
