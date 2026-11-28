@@ -60,6 +60,8 @@ class Bridge(QObject):
         self.window = window
         self.cleaner = Cleaner()
         self.running = False
+        self._maximized = False
+        self._normal_geometry = None
 
     # -- information -------------------------------------------------------
     @Slot()
@@ -88,16 +90,34 @@ class Bridge(QObject):
         position = self.window.pos()
         self.window.move(position.x() + int(dx), position.y() + int(dy))
 
+    @Slot(float, float)
+    def resizeBy(self, dw: float, dh: float):
+        size = self.window.size()
+        self.window.resize(
+            max(self.window.minimumWidth(), size.width() + int(dw)),
+            max(self.window.minimumHeight(), size.height() + int(dh)),
+        )
+
     @Slot()
     def minimize(self):
         self.window.showMinimized()
 
     @Slot()
     def maximize(self):
-        if self.window.isMaximized():
+        # Frameless windows keep their size under showMaximized(), so do it ourselves.
+        if self._maximized:
+            self._maximized = False
             self.window.showNormal()
+            if self._normal_geometry is not None:
+                self.window.setGeometry(self._normal_geometry)
         else:
-            self.window.showMaximized()
+            self._normal_geometry = self.window.geometry()
+            self._maximized = True
+            screen = self.window.screen() or QGuiApplication.primaryScreen()
+            if screen:
+                self.window.setGeometry(screen.availableGeometry())
+            else:
+                self.window.showMaximized()
 
     @Slot()
     def closeWin(self):

@@ -26,6 +26,8 @@
 
 - **iOS-style glass UI** — frosted panels, soft gradients, traffic-light window controls
 - **Live system gauges** — RAM, swap, disk, CPU load, temperature, network and uptime refresh automatically
+- **Diagnostics tab** — interfaces and VPN tunnels, local/external connections by process, listening ports, disk I/O and busiest processes
+- **Draggable, resizable window** — drag the title bar, double-click it to maximize
 - **10 cleanup targets** — from kernel page caches to browser HTTP caches
 - **Secure elevation** — sudo password is requested only when needed and never written to disk
 - **Progress ring + activity log** — see exactly what happened and how much space you got back

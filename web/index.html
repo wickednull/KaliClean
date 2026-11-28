@@ -85,8 +85,10 @@
     align-items: center;
     gap: 14px;
     padding: 14px 18px;
-    cursor: default;
+    cursor: grab;
+    touch-action: none;
   }
+  header:active { cursor: grabbing; }
   .logo {
     width: 46px; height: 46px;
     border-radius: 18px;
@@ -129,6 +131,64 @@
   .traffic button::after {
     content: ""; position: absolute; inset: 0; border-radius: inherit;
     border: 1px solid rgba(0,0,0,0.12);
+  }
+
+  /* Frameless window: invisible grips on the right/bottom edges */
+  .resize-grip { position: fixed; z-index: 12; touch-action: none; }
+  .resize-grip.e { top: 40px; right: 0; bottom: 40px; width: 6px; cursor: ew-resize; }
+  .resize-grip.s { left: 40px; right: 40px; bottom: 0; height: 6px; cursor: ns-resize; }
+  .resize-grip.se { right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; }
+
+  /* ---------- right-panel tabs + diagnostics ---------- */
+  .panel-tabs {
+    display: flex; align-items: center; gap: 4px;
+    padding: 2px 20px 10px;
+  }
+  .panel-tabs .tab {
+    background: none; border: 1px solid transparent; color: var(--faint);
+    font-family: inherit; font-size: 11px; font-weight: 600;
+    padding: 5px 10px; border-radius: 99px; cursor: pointer;
+  }
+  .panel-tabs .tab:hover { color: var(--text); }
+  .panel-tabs .tab.active {
+    color: var(--text); background: rgba(255,255,255,0.09);
+    border-color: var(--stroke-soft);
+  }
+  .panel-tabs .spacer { flex: 1; }
+  .panel-tabs .badge { font-size: 10px; color: var(--faint); }
+  .tab-view { flex: 1; min-height: 0; display: flex; }
+  .tab-view[hidden] { display: none; }
+  .tab-view .log { flex: 1; margin-top: 0; }
+  .diag {
+    display: block; overflow-y: auto; padding: 0 20px 12px;
+    font-size: 11px; user-select: text;
+  }
+  .diag::-webkit-scrollbar { width: 6px; }
+  .diag::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 99px; }
+  .diag-section { margin-bottom: 12px; }
+  .diag-title {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .9px;
+    color: var(--muted); margin-bottom: 5px;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .diag-title .hint { color: var(--faint); text-transform: none; letter-spacing: 0; }
+  .diag-line {
+    background: rgba(4,8,30,0.24); border: 1px solid var(--stroke-soft);
+    border-radius: 14px; padding: 8px 10px; color: var(--muted);
+  }
+  .diag-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 9px; border-radius: 12px;
+    background: rgba(255,255,255,0.045); margin-bottom: 4px;
+  }
+  .diag-row .name { color: var(--text); font-weight: 550; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .diag-row .detail { color: var(--faint); margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .diag-row.vpn .name { color: var(--accent-2); }
+  .diag-row .pid { color: var(--faint); min-width: 42px; font-variant-numeric: tabular-nums; }
+  .tag-vpn {
+    font-size: 9px; text-transform: uppercase; letter-spacing: .5px;
+    color: var(--accent-2); border: 1px solid rgba(182,156,255,0.35);
+    padding: 1px 5px; border-radius: 5px;
   }
 
   /* ---------- stats ---------- */
@@ -432,8 +492,38 @@
         </div>
         <div class="current-task" id="currentTask">Nothing selected yet</div>
         <button class="primary-btn" id="cleanBtn"><span>✦ &nbsp; Clean &amp; refresh</span></button>
-        <div class="log-head"><span>Activity</span><span id="freedBadge">0 B reclaimed</span></div>
-        <div class="log" id="log"></div>
+        <div class="panel-tabs">
+          <button class="tab active" data-tab="activity">Activity</button>
+          <button class="tab" data-tab="diag">Diagnostics</button>
+          <span class="spacer"></span>
+          <span class="badge" id="freedBadge">0 B reclaimed</span>
+        </div>
+        <div class="tab-view" id="view-activity">
+          <div class="log" id="log"></div>
+        </div>
+        <div class="tab-view diag" id="view-diag" hidden>
+          <div class="diag-section">
+            <div class="diag-title">Interfaces <span class="hint" id="ifHint">IPv4 · link state</span></div>
+            <div id="ifList"></div>
+          </div>
+          <div class="diag-section">
+            <div class="diag-title">Connections <span class="hint">established TCP</span></div>
+            <div class="diag-line" id="connSummary">—</div>
+            <div id="connOwners"></div>
+          </div>
+          <div class="diag-section">
+            <div class="diag-title">Disk I/O</div>
+            <div class="diag-line" id="ioInfo">—</div>
+          </div>
+          <div class="diag-section">
+            <div class="diag-title">Top processes <span class="hint">by CPU since last refresh</span></div>
+            <div id="procList"></div>
+          </div>
+          <div class="diag-section" id="batterySection" hidden>
+            <div class="diag-title">Battery</div>
+            <div class="diag-line" id="batteryInfo">—</div>
+          </div>
+        </div>
       </section>
     </main>
 
@@ -447,6 +537,10 @@
       <span class="credit">made by wickednull</span>
     </footer>
   </div>
+
+  <div class="resize-grip e" data-edge="e"></div>
+  <div class="resize-grip s" data-edge="s"></div>
+  <div class="resize-grip se" data-edge="se"></div>
 
   <div class="overlay" id="authOverlay">
     <div class="glass modal">
@@ -592,6 +686,91 @@
       $('upValue').textContent = uptimeText(s.uptime);
       $('upSub').textContent = (s.procs || 0) + ' processes · load '
         + Number(s.load5 || 0).toFixed(2) + ' / ' + Number(s.load15 || 0).toFixed(2);
+      renderDiagnostics(s);
+    }
+
+    function renderDiagnostics(s) {
+      const ifHost = $('ifList');
+      ifHost.innerHTML = '';
+      const interfaces = s.interfaces || [];
+      if (!interfaces.length) {
+        ifHost.innerHTML = '<div class="diag-line">No interfaces detected</div>';
+      }
+      interfaces.forEach(iface => {
+        const row = document.createElement('div');
+        row.className = 'diag-row' + (iface.vpn ? ' vpn' : '');
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = iface.name;
+        row.appendChild(name);
+        if (iface.vpn) {
+          const tag = document.createElement('span');
+          tag.className = 'tag-vpn';
+          tag.textContent = 'vpn';
+          row.appendChild(tag);
+        }
+        const detail = document.createElement('span');
+        detail.className = 'detail';
+        detail.textContent = (iface.ip || 'no IP') + ' · ' + (iface.state || 'unknown');
+        row.appendChild(detail);
+        ifHost.appendChild(row);
+      });
+
+      $('connSummary').textContent = (s.established || 0) + ' established · '
+        + (s.localConns || 0) + ' local · ' + (s.externalConns || 0) + ' external';
+      const ownerHost = $('connOwners');
+      ownerHost.innerHTML = '';
+      (s.connProcesses || []).forEach(group => {
+        const row = document.createElement('div');
+        row.className = 'diag-row';
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = group.name;
+        const count = document.createElement('span');
+        count.className = 'detail';
+        count.textContent = group.count + (group.count === 1 ? ' socket' : ' sockets');
+        row.appendChild(name); row.appendChild(count);
+        ownerHost.appendChild(row);
+      });
+      const ports = (s.listening || []).slice(0, 8);
+      const portRow = document.createElement('div');
+      portRow.className = 'diag-row';
+      const portName = document.createElement('span');
+      portName.className = 'name';
+      portName.textContent = 'Listening';
+      const portDetail = document.createElement('span');
+      portDetail.className = 'detail';
+      portDetail.textContent = ports.length
+        ? ports.join(', ') + ((s.listening || []).length > 8 ? '…' : '')
+        : 'none';
+      portRow.appendChild(portName); portRow.appendChild(portDetail);
+      ownerHost.appendChild(portRow);
+
+      $('ioInfo').textContent = 'read ' + rate(s.diskReadRate) + ' · write ' + rate(s.diskWriteRate);
+
+      const procHost = $('procList');
+      procHost.innerHTML = '';
+      (s.top || []).forEach(proc => {
+        const row = document.createElement('div');
+        row.className = 'diag-row';
+        const pid = document.createElement('span');
+        pid.className = 'pid';
+        pid.textContent = proc.pid;
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = proc.name;
+        const detail = document.createElement('span');
+        detail.className = 'detail';
+        detail.textContent = Number(proc.cpu).toFixed(1) + '% · ' + human(proc.mem);
+        row.appendChild(pid); row.appendChild(name); row.appendChild(detail);
+        procHost.appendChild(row);
+      });
+
+      const battery = s.battery;
+      $('batterySection').hidden = !battery;
+      if (battery) {
+        $('batteryInfo').textContent = battery.percent + '% · ' + battery.status;
+      }
     }
 
     function addLog(payload) {
@@ -686,18 +865,66 @@
       bridge.refreshSizes();
     }
 
-    // ---- window dragging & controls ----
-    let dragging = false, lastX = 0, lastY = 0;
-    $('dragHandle').addEventListener('mousedown', (event) => {
+    // ---- window dragging, resizing & controls ----
+    const handle = $('dragHandle');
+    let dragPointer = null, lastX = 0, lastY = 0, lastPress = 0;
+    handle.addEventListener('pointerdown', (event) => {
       if (event.target.closest('button')) return;
-      dragging = true; lastX = event.screenX; lastY = event.screenY;
+      const now = Date.now();
+      if (now - lastPress < 350) {  // double-click toggles maximize
+        lastPress = 0;
+        if (bridge) bridge.maximize();
+        return;
+      }
+      lastPress = now;
+      dragPointer = event.pointerId;
+      lastX = event.screenX; lastY = event.screenY;
+      handle.setPointerCapture(event.pointerId);
     });
-    window.addEventListener('mousemove', (event) => {
-      if (!dragging || !bridge) return;
+    handle.addEventListener('pointermove', (event) => {
+      if (dragPointer !== event.pointerId || !bridge) return;
       bridge.drag(event.screenX - lastX, event.screenY - lastY);
       lastX = event.screenX; lastY = event.screenY;
     });
-    window.addEventListener('mouseup', () => { dragging = false; });
+    const endDrag = (event) => {
+      if (dragPointer !== event.pointerId) return;
+      if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
+      dragPointer = null;
+    };
+    handle.addEventListener('pointerup', endDrag);
+    handle.addEventListener('pointercancel', endDrag);
+
+    document.querySelectorAll('.resize-grip').forEach(grip => {
+      grip.addEventListener('pointerdown', (event) => {
+        const edge = grip.dataset.edge;
+        let x = event.screenX, y = event.screenY;
+        grip.setPointerCapture(event.pointerId);
+        const move = (e) => {
+          if (!bridge) return;
+          const dx = e.screenX - x, dy = e.screenY - y;
+          bridge.resizeBy(edge.includes('e') ? dx : 0, edge.includes('s') ? dy : 0);
+          x = e.screenX; y = e.screenY;
+        };
+        const up = (e) => {
+          if (grip.hasPointerCapture(e.pointerId)) grip.releasePointerCapture(e.pointerId);
+          grip.removeEventListener('pointermove', move);
+          grip.removeEventListener('pointerup', up);
+        };
+        grip.addEventListener('pointermove', move);
+        grip.addEventListener('pointerup', up);
+        event.preventDefault();
+      });
+    });
+
+    document.querySelectorAll('.panel-tabs .tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.panel-tabs .tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        $('view-activity').hidden = tab.dataset.tab !== 'activity';
+        $('view-diag').hidden = tab.dataset.tab !== 'diag';
+      });
+    });
+
     $('btnClose').addEventListener('click', () => bridge && bridge.closeWin());
     $('btnMin').addEventListener('click', () => bridge && bridge.minimize());
     $('btnMax').addEventListener('click', () => bridge && bridge.maximize());

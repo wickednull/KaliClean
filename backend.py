@@ -11,10 +11,14 @@ Every operation is conservative:
 
 from __future__ import annotations
 
+import fcntl
 import glob
 import os
+import re
 import shutil
+import socket
 import stat
+import struct
 import subprocess
 import time
 from pathlib import Path
@@ -247,6 +251,227 @@ def uptime_seconds() -> float:
         return 0.0
 
 
+def network_interfaces() -> list[dict]:
+    """Interfaces, IPv4 addresses and link state (VPN tunnels included)."""
+    interfaces: list[dict] = []
+    try:
+        with open("/proc/net/dev", encoding="utf-8") as handle:
+            names = [line.split(":", 1)[0].strip() for line in handle.readlines()[2:]]
+    except OSError:
+        return interfaces
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    for name in names:
+        address = ""
+        try:
+            packed = fcntl.ioctl(
+                sock.fileno(), 0x8915, struct.pack("256s", name[:15].encode())
+            )
+            address = socket.inet_ntoa(packed[20:24])
+        except OSError:
+            pass
+        state = ""
+        try:
+            with open(f"/sys/class/net/{name}/operstate", encoding="utf-8") as handle:
+                state = handle.read().strip()
+        except OSError:
+            pass
+        interfaces.append(
+            {
+                "name": name,
+                "ip": address,
+                "state": state,
+                "vpn": name.startswith(("tun", "tap", "ppp")),
+            }
+        )
+    sock.close()
+    return interfaces
+
+
+def _is_loopback(hex_address: str) -> bool:
+    """Interpret the little-endian address format used by /proc/net/tcp."""
+    try:
+        raw = bytes.fromhex(hex_address)
+    except ValueError:
+        return False
+    if len(raw) == 4:
+        return raw[::-1] == bytes((127, 0, 0, 1))
+    if len(raw) == 16:
+        words = b"".join(raw[index : index + 4][::-1] for index in range(0, 16, 4))
+        return socket.inet_ntop(socket.AF_INET6, words) == "::1"
+    return False
+
+
+def _socket_owners(inodes: set[str]) -> dict[str, str]:
+    """Map socket inodes to process names by walking /proc/*/fd."""
+    owners: dict[str, str] = {}
+    remaining = set(inodes)
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit() or not remaining:
+            continue
+        try:
+            descriptors = os.listdir(f"/proc/{pid}/fd")
+        except OSError:
+            continue
+        try:
+            with open(f"/proc/{pid}/comm", encoding="utf-8") as handle:
+                name = handle.read().strip() or pid
+        except OSError:
+            name = pid
+        for descriptor in descriptors:
+            try:
+                target = os.readlink(f"/proc/{pid}/fd/{descriptor}")
+            except OSError:
+                continue
+            if target.startswith("socket:["):
+                inode = target[8:-1]
+                if inode in remaining:
+                    owners[inode] = name
+                    remaining.discard(inode)
+                    if not remaining:
+                        break
+    return owners
+
+
+def connection_stats() -> tuple[int, int, int, list[dict], list[int]]:
+    """Established TCP sessions (local/external, by process) and listening ports."""
+    established = local = external = 0
+    listening: set[int] = set()
+    sockets: dict[str, None] = {}
+    for path in ("/proc/net/tcp", "/proc/net/tcp6"):
+        try:
+            with open(path, encoding="utf-8") as handle:
+                lines = handle.readlines()[1:]
+        except OSError:
+            continue
+        for line in lines:
+            parts = line.split()
+            if len(parts) < 10:
+                continue
+            if parts[3] == "01":  # ESTABLISHED
+                established += 1
+                sockets[parts[9]] = None
+                source, _ = parts[1].rsplit(":", 1)
+                destination, _ = parts[2].rsplit(":", 1)
+                if _is_loopback(source) and _is_loopback(destination):
+                    local += 1
+                else:
+                    external += 1
+            elif parts[3] == "0A":  # LISTEN
+                try:
+                    listening.add(int(parts[1].rsplit(":", 1)[1], 16))
+                except (ValueError, IndexError):
+                    pass
+    owners = _socket_owners(set(sockets))
+    grouped: dict[str, int] = {}
+    for inode in sockets:
+        name = owners.get(inode, "other")
+        grouped[name] = grouped.get(name, 0) + 1
+    by_process = [
+        {"name": name, "count": count}
+        for name, count in sorted(grouped.items(), key=lambda item: (-item[1], item[0]))
+    ]
+    return established, local, external, by_process, sorted(listening)
+
+
+def disk_io_counters() -> tuple[int, int]:
+    """Cumulative bytes read/written by physical disks."""
+    read = write = 0
+    try:
+        with open("/proc/diskstats", encoding="utf-8") as handle:
+            lines = handle.readlines()
+    except OSError:
+        return 0, 0
+    for line in lines:
+        parts = line.split()
+        if len(parts) < 14:
+            continue
+        name = parts[2]
+        if name.startswith(("loop", "ram", "dm-", "sr")):
+            continue
+        if re.match(r"^(sd|vd|hd|xvd)[a-z]+[0-9]+$", name):
+            continue  # partition, already counted with its parent disk
+        if re.match(r"^nvme\d+n\d+p\d+$", name):
+            continue
+        read += int(parts[5]) * 512
+        write += int(parts[9]) * 512
+    return read, write
+
+
+def disk_io_rates() -> tuple[float, float]:
+    now = (disk_io_counters(), time.time())
+    previous = _rate_state.get("disk")
+    _rate_state["disk"] = now
+    if not previous:
+        return 0.0, 0.0
+    elapsed = max(0.001, now[1] - previous[1])
+    return (
+        max(0, now[0][0] - previous[0][0]) / elapsed,
+        max(0, now[0][1] - previous[0][1]) / elapsed,
+    )
+
+
+def top_processes(limit: int = 6) -> list[dict]:
+    """Busiest processes by CPU time used since the previous sample."""
+    clock = os.sysconf("SC_CLK_TCK") or 100
+    page = os.sysconf("SC_PAGE_SIZE") or 4096
+    current: dict[int, int] = {}
+    entries: list[tuple[int, str, int, int]] = []
+    sampled = time.time()
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit():
+            continue
+        try:
+            with open(f"/proc/{pid}/stat", encoding="utf-8") as handle:
+                raw = handle.read()
+            name = raw[raw.index("(") + 1 : raw.rindex(")")]
+            fields = raw[raw.rindex(")") + 2 :].split()
+            ticks = int(fields[11]) + int(fields[12])  # utime + stime
+            memory = int(fields[21]) * page  # rss
+        except (OSError, ValueError, IndexError):
+            continue
+        current[int(pid)] = ticks
+        entries.append((int(pid), name, ticks, memory))
+    previous = _rate_state.get("procs")
+    _rate_state["procs"] = (current, sampled)
+    if not previous:
+        ranked = sorted(entries, key=lambda item: item[2], reverse=True)[:limit]
+        return [
+            {"pid": p, "name": n, "cpu": 0.0, "mem": m} for p, n, _t, m in ranked
+        ]
+    before, previous_time = previous
+    elapsed = max(0.001, sampled - previous_time)
+    ranked = sorted(
+        (
+            (
+                pid,
+                name,
+                max(0, ticks - before.get(pid, ticks)) / clock / elapsed * 100,
+                memory,
+            )
+            for pid, name, ticks, memory in entries
+        ),
+        key=lambda item: item[2],
+        reverse=True,
+    )[:limit]
+    return [
+        {"pid": p, "name": n, "cpu": round(cpu, 1), "mem": mem}
+        for p, n, cpu, mem in ranked
+    ]
+
+
+def battery_status() -> dict | None:
+    for path in glob.glob("/sys/class/power_supply/BAT*"):
+        try:
+            with open(f"{path}/capacity", encoding="utf-8") as handle:
+                capacity = int(handle.read().strip())
+            with open(f"{path}/status", encoding="utf-8") as handle:
+                status = handle.read().strip()
+            return {"percent": capacity, "status": status}
+        except (OSError, ValueError):
+            continue
+    return None
+
+
 def system_stats() -> dict:
     memory = meminfo()
     total = memory.get("MemTotal", 1)
@@ -257,6 +482,8 @@ def system_stats() -> dict:
     disk = shutil.disk_usage("/")
     load1, load5, load15, procs = load_and_processes()
     net_rx, net_tx, net_rx_rate, net_tx_rate = network_stats()
+    disk_read_rate, disk_write_rate = disk_io_rates()
+    established, local, external, conn_processes, listening = connection_stats()
     return {
         "memTotal": total,
         "memUsed": used,
@@ -280,6 +507,16 @@ def system_stats() -> dict:
         "netTx": net_tx,
         "netRxRate": round(net_rx_rate),
         "netTxRate": round(net_tx_rate),
+        "diskReadRate": round(disk_read_rate),
+        "diskWriteRate": round(disk_write_rate),
+        "interfaces": network_interfaces(),
+        "established": established,
+        "localConns": local,
+        "externalConns": external,
+        "connProcesses": conn_processes,
+        "listening": listening,
+        "top": top_processes(),
+        "battery": battery_status(),
         "isRoot": os.geteuid() == 0,
     }
 
