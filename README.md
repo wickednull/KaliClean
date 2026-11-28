@@ -25,7 +25,7 @@
 ## ✨ Features
 
 - **iOS-style glass UI** — frosted panels, soft gradients, traffic-light window controls
-- **Live system gauges** — RAM, swap and disk usage refresh automatically
+- **Live system gauges** — RAM, swap, disk, CPU load, temperature, network and uptime refresh automatically
 - **10 cleanup targets** — from kernel page caches to browser HTTP caches
 - **Secure elevation** — sudo password is requested only when needed and never written to disk
 - **Progress ring + activity log** — see exactly what happened and how much space you got back

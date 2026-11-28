@@ -156,6 +156,97 @@ def estimate(task_id: str) -> int:
     return dir_size(getter()) if getter else 0
 
 
+# Delta-based metrics need one previous sample; the UI refreshes every few seconds.
+_rate_state: dict[str, tuple] = {}
+
+
+def cpu_percent() -> float:
+    """CPU utilisation since the previous sample, as a percentage."""
+    try:
+        with open("/proc/stat", encoding="utf-8") as handle:
+            fields = [int(value) for value in handle.readline().split()[1:9]]
+    except (OSError, ValueError, IndexError):
+        return 0.0
+    idle = fields[3] + fields[4]  # idle + iowait
+    total = sum(fields)
+    previous = _rate_state.get("cpu")
+    _rate_state["cpu"] = (idle, total)
+    if not previous:
+        return 0.0
+    idle_delta = idle - previous[0]
+    total_delta = total - previous[1]
+    if total_delta <= 0:
+        return 0.0
+    return round(max(0.0, min(100.0, (1 - idle_delta / total_delta) * 100)), 1)
+
+
+def cpu_temperature() -> float | None:
+    """Highest plausible temperature from thermal zones or hwmon sensors."""
+    patterns = (
+        "/sys/class/thermal/thermal_zone*/temp",
+        "/sys/class/hwmon/hwmon*/temp*_input",
+    )
+    readings: list[float] = []
+    for pattern in patterns:
+        for path in glob.glob(pattern):
+            try:
+                with open(path, encoding="utf-8") as handle:
+                    value = float(handle.read().strip())
+            except (OSError, ValueError):
+                continue
+            if value > 1000:  # many sensors report millidegrees
+                value /= 1000
+            if 0 < value < 125:
+                readings.append(value)
+    return round(max(readings), 1) if readings else None
+
+
+def load_and_processes() -> tuple[float, float, float, int]:
+    """Load averages (1/5/15 min) and the current process count."""
+    try:
+        with open("/proc/loadavg", encoding="utf-8") as handle:
+            parts = handle.read().split()
+        return float(parts[0]), float(parts[1]), float(parts[2]), int(parts[3].split("/")[1])
+    except (OSError, ValueError, IndexError):
+        return 0.0, 0.0, 0.0, 0
+
+
+def network_stats() -> tuple[int, int, float, float]:
+    """Cumulative RX/TX bytes and bytes-per-second since the last sample."""
+    rx = tx = 0
+    try:
+        with open("/proc/net/dev", encoding="utf-8") as handle:
+            lines = handle.readlines()[2:]
+        for line in lines:
+            parts = line.split()
+            if len(parts) < 17 or parts[0].rstrip(":") == "lo":
+                continue  # skip the loopback interface
+            rx += int(parts[1])
+            tx += int(parts[9])
+    except (OSError, ValueError):
+        pass
+    now = (rx, tx, time.time())
+    previous = _rate_state.get("net")
+    _rate_state["net"] = now
+    if not previous:
+        return rx, tx, 0.0, 0.0
+    elapsed = max(0.001, now[2] - previous[2])
+    return (
+        rx,
+        tx,
+        max(0, rx - previous[0]) / elapsed,
+        max(0, tx - previous[1]) / elapsed,
+    )
+
+
+def uptime_seconds() -> float:
+    try:
+        with open("/proc/uptime", encoding="utf-8") as handle:
+            return float(handle.read().split()[0])
+    except (OSError, ValueError, IndexError):
+        return 0.0
+
+
 def system_stats() -> dict:
     memory = meminfo()
     total = memory.get("MemTotal", 1)
@@ -164,6 +255,8 @@ def system_stats() -> dict:
     swap_total = memory.get("SwapTotal", 0)
     swap_free = memory.get("SwapFree", 0)
     disk = shutil.disk_usage("/")
+    load1, load5, load15, procs = load_and_processes()
+    net_rx, net_tx, net_rx_rate, net_tx_rate = network_stats()
     return {
         "memTotal": total,
         "memUsed": used,
@@ -175,6 +268,18 @@ def system_stats() -> dict:
         "diskTotal": disk.total,
         "diskUsed": disk.used,
         "diskPercent": round(disk.used / disk.total * 100, 1),
+        "cpuPercent": cpu_percent(),
+        "cpuCores": os.cpu_count() or 1,
+        "load1": load1,
+        "load5": load5,
+        "load15": load15,
+        "procs": procs,
+        "tempC": cpu_temperature(),
+        "uptime": round(uptime_seconds()),
+        "netRx": net_rx,
+        "netTx": net_tx,
+        "netRxRate": round(net_rx_rate),
+        "netTxRate": round(net_tx_rate),
         "isRoot": os.geteuid() == 0,
     }
 

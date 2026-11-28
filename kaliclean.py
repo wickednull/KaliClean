@@ -190,8 +190,8 @@ class MainWindow(QWidget):
         super().__init__()
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowSystemMenuHint)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setMinimumSize(940, 680)
-        self.resize(1180, 800)
+        self.setMinimumSize(960, 780)
+        self.resize(1180, 900)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
