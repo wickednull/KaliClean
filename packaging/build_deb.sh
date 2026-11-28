@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Build a Debian/Kali .deb package for KaliClean.
-# Usage: ./packaging/build_deb.sh [version]   (default: 1.0.0)
+# Usage: ./packaging/build_deb.sh [version]   (default: 1.0.1)
 set -euo pipefail
 umask 022
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(dirname "$HERE")"
-VERSION="${1:-1.0.0}"
+VERSION="${1:-1.0.1}"
 NAME="kaliclean"
 PKG="${NAME}_${VERSION}_all"
 BUILD="$(mktemp -d "${TMPDIR:-/tmp}/${NAME}-deb.XXXXXX")"

@@ -1,3 +1,10 @@
+kaliclean (1.0.1) kali-rolling; urgency=medium
+
+  * Round the window and card corners.
+  * Add CPU, load, temperature, network and uptime gauges.
+
+ -- wickednull <wickednull@users.noreply.github.com>  Fri, 27 Nov 2026 21:00:00 +0000
+
 kaliclean (1.0.0) kali-rolling; urgency=medium
 
   * Initial packaged release.

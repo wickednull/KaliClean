@@ -19,6 +19,7 @@
     <name>wickednull</name>
   </developer>
   <releases>
+    <release version="1.0.1" date="2026-11-27"/>
     <release version="1.0.0" date="2026-11-22"/>
   </releases>
 </component>

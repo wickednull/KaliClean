@@ -54,7 +54,7 @@ Build a Debian package and install it (recommended — integrates with apt and u
 
 ```bash
 make deb
-sudo apt install ./dist/kaliclean_1.0.0_all.deb
+sudo apt install ./dist/kaliclean_1.0.1_all.deb
 ```
 
 Or install straight from the checkout without building a package:
